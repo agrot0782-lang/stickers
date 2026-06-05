@@ -1,62 +1,481 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
+
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Reimpresiones Terraflux</title>
+
+<meta name="viewport"
+content="width=device-width, initial-scale=1.0">
+
+<title>
+Reimpresión Terraflux
+</title>
+
+<link
+href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
 <style>
+
 body{
-    font-family: Arial;
-    max-width: 800px;
-    margin:40px auto;
+
+    background:#f8faf8;
+
     padding:20px;
+
 }
 
-textarea{
-    width:100%;
-    height:300px;
+.header{
+
+    background:#2E7D32;
+
+    color:white;
+
+    padding:20px;
+
+    border-radius:16px;
+
+    margin-bottom:20px;
+
+}
+
+.card-top{
+
+       border:none;
+
+    border-radius:16px;
+
+    box-shadow:
+    0 2px 8px rgba(0,0,0,.08);
+
+}
+
+.card-top h2{
+
+    margin:0;
+
+    font-weight:bold;
+
+}
+
+.trabajador{
+
+    border-radius:14px;
+
+    padding:12px;
+
+    margin-bottom:10px;
+
+    background:white;
+
+}
+
+.verde{
+
+    border-left:6px solid #2E7D32;
+
+}
+
+.rojo{
+
+    border-left:6px solid #dc3545;
+
+}
+ .btn-success{
+
+    height:55px;
+
+    font-weight:600;
+
     font-size:18px;
-}
 
-button{
-    width:100%;
-    padding:15px;
-    font-size:20px;
-    cursor:pointer;
+    border-radius:12px;
+
 }
 </style>
+
 </head>
 
 <body>
 
-<h2>Reimpresión de Stickers</h2>
+<div class="header">
 
-<p>Pega un legajo por línea</p>
+    <h2>
+        🌱 REIMPRESIÓN TERRAFLUX
+    </h2>
 
-<textarea id="legajos"></textarea>
+    <small>
+        Control de stickers
+    </small>
 
-<br><br>
+</div>
 
-<button onclick="imprimir()">
-Enviar a impresión
+<div class="row mb-3">
+
+    <div class="col-md-4">
+
+        <div class="card card-top">
+
+            <div class="card-body">
+
+                <small>
+                    Trabajadores
+                </small>
+
+                <h2 id="totalTrabajadores">
+                    0
+                </h2>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <div class="col-md-4">
+
+        <div class="card card-top">
+
+            <div class="card-body">
+
+                <small>
+                    Válidos
+                </small>
+
+                <h2 id="totalValidos">
+                    0
+                </h2>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <div class="col-md-4">
+
+        <div class="card card-top">
+
+            <div class="card-body">
+
+                <small>
+                    Sin acceso
+                </small>
+
+                <h2 id="totalInvalidos">
+                    0
+                </h2>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<div class="card mb-3">
+
+    <div class="card-body">
+
+        <label>
+            Supervisor
+        </label>
+
+        <select
+        id="supervisor"
+        class="form-select">
+
+            <option>
+                Cargando...
+            </option>
+
+        </select>
+
+    </div>
+
+</div>
+<button
+class="btn btn-success mt-3"
+onclick="mostrarCuadrilla()">
+
+Cargar cuadrilla
+
+</button>
+<div id="listaTrabajadores">
+
+</div>
+
+<div class="card mt-3">
+
+    <div class="card-body">
+
+        <h5>
+            Legajos Manuales
+        </h5>
+
+        <textarea
+        id="manuales"
+        class="form-control"
+        rows="5">
+
+        </textarea>
+
+    </div>
+
+</div>
+<div
+id="resultadoManuales"
+class="mt-3">
+
+</div>
+<button
+class="btn btn-success w-100 mt-3"
+id="btnImprimir">
+
+🖨️ IMPRIMIR
+
 </button>
 
+</body>
 <script>
 
+var firebaseConfig = {
+
+    apiKey: "AIzaSyDz4RqKjSJxB0F5eP4RzajQtW94cPXmpSg",
+
+    authDomain: "data-b6691.firebaseapp.com",
+
+    projectId: "data-b6691",
+
+    storageBucket: "data-b6691.firebasestorage.app",
+
+    messagingSenderId: "932857865624",
+
+    appId: "1:932857865624:web:20408d56e0a821aae737ed",
+
+    measurementId: "G-G16TH0Y127"
+
+};
+
+firebase.initializeApp(firebaseConfig);
+
+var db = firebase.database();
+
+let tareo = [];
+let terrapuerto = {};
+
+cargarDatos();
+
+async function cargarDatos(){
+
+    const tareoSnap =
+    await db.ref("tareo").once("value");
+
+    tareo =
+    Object.values(
+        tareoSnap.val() || {}
+    );
+
+    const terrapuertoSnap =
+    await db.ref("terrapuerto")
+    .once("value");
+
+    terrapuerto =
+    terrapuertoSnap.val() || {};
+
+    cargarSupervisores();
+
+}
+
+function cargarSupervisores(){
+
+    const supervisores =
+
+    [...new Set(
+
+        tareo
+        .map(x => x.supervisor)
+        .filter(Boolean)
+
+    )]
+    .sort();
+
+    const select =
+    document.getElementById(
+        "supervisor"
+    );
+
+    select.innerHTML =
+
+    `<option value="">
+        Seleccione supervisor
+    </option>`;
+
+    supervisores.forEach(nombre => {
+
+        select.innerHTML +=
+
+        `<option value="${nombre}">
+            ${nombre}
+        </option>`;
+
+    });
+
+}
+function mostrarCuadrilla(){
+
+    const supervisor =
+
+    document
+    .getElementById("supervisor")
+    .value;
+
+    const lista =
+
+    tareo.filter(x =>
+
+        x.supervisor === supervisor
+
+    );
+
+    let html = "";
+
+    let validos = 0;
+    let invalidos = 0;
+
+    lista.forEach(trabajador => {
+
+        const acceso =
+
+        terrapuerto[
+            trabajador.legajo
+        ];
+
+        const paso = !!acceso;
+
+        if(paso){
+
+            validos++;
+
+        }else{
+
+            invalidos++;
+
+        }
+
+        html += `
+
+        <div class="trabajador ${paso ? 'verde' : 'rojo'}">
+
+           <label>
+
+<input
+type="checkbox"
+class="chkTrabajador"
+value="${trabajador.legajo}"
+${paso ? 'checked' : ''}>
+
+<strong>
+    ${trabajador.trabajador}
+</strong>
+
+</label>
+
+            <br>
+
+            Legajo:
+            ${trabajador.legajo}
+
+            <br>
+
+            Grupo:
+            ${trabajador.grupo}
+
+            <br>
+
+            ${
+                paso
+                ?
+                '🟢 Entrada: ' + acceso.hora_marcado
+                :
+                '🔴 Sin acceso Terrapuerto'
+            }
+
+        </div>
+
+        `;
+
+    });
+
+    document
+    .getElementById(
+        "listaTrabajadores"
+    )
+    .innerHTML = html;
+
+    document
+    .getElementById(
+        "totalTrabajadores"
+    )
+    .innerText = lista.length;
+
+    document
+    .getElementById(
+        "totalValidos"
+    )
+    .innerText = validos;
+
+    document
+    .getElementById(
+        "totalInvalidos"
+    )
+    .innerText = invalidos;
+
+}
+
+
+document
+.getElementById("btnImprimir")
+.addEventListener("click", imprimir);
 async function imprimir(){
 
-    const legajos =
-        document
-        .getElementById("legajos")
-        .value
-        .split("\n")
-        .map(x => x.trim())
-        .filter(x => x !== "");
+    let legajos = [];
+
+    document
+    .querySelectorAll(
+        ".chkTrabajador:checked"
+    )
+    .forEach(chk => {
+
+        legajos.push(
+            chk.value
+        );
+
+    });
+
+    const manuales =
+
+    document
+    .getElementById("manuales")
+    .value
+    .split("\n")
+    .map(x => x.trim())
+    .filter(Boolean);
+
+    legajos.push(...manuales);
 
     if(legajos.length === 0){
-        alert("No hay legajos");
+
+        alert(
+            "No hay legajos para imprimir"
+        );
+
         return;
+
     }
 
     const r = await fetch(
@@ -72,15 +491,14 @@ async function imprimir(){
         }
     );
 
-   const data = await r.json();
+    const data =
+    await r.json();
 
-console.log(data);
-
-alert(JSON.stringify(data));
+    alert(
+        "Impresos: " +
+        data.cantidad
+    );
 
 }
-
 </script>
-
-</body>
 </html>
