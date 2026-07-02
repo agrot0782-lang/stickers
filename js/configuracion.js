@@ -2,7 +2,7 @@ let configuracionSistema = {
 
     ipFlask:
 
-    "192.168.6.5",
+    "192.168.2.200",
 
     puertoFlask:
 
